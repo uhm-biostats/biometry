@@ -1,0 +1,42 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Biometry",
+    "section": "",
+    "text": "Aloha mai!\nThis is the course website for ZOOL XYZ Biometry at the University of Hawaiʻi Mānoa.",
+    "crumbs": [
+      "Aloha mai!"
+    ]
+  },
+  {
+    "objectID": "likelihood.html",
+    "href": "likelihood.html",
+    "title": "1  Likelihood, AIC, and likelihood ratio tests",
+    "section": "",
+    "text": "1.1 Let’s start with a model\nLet’s start with a Poisson GLM and a made-up dataset to go along with it. Our data will just be y (the response variable) and x (the explanatory variable). We will assume y is the count of something (e.g. species abundance) and x is some kind of continuous numerical variable like temperature or rainfall, etc.\nLet’s simulate some data\n# uniformly distributed explanatory variable\nx &lt;- runif(100)\n\n# calculate the mean of `y` as a function of `x`\n# (don't worry about interpreting the right hand side right now)\nlambda &lt;- exp(1 + 2 * x)\n\n# finally calculate `y`\ny &lt;- rpois(length(x), lambda)\n\n# combine `x` and `y`\ndat &lt;-  data.frame(x = x, y = y)\nHere’s the first few rows of our simulated data\nx\ny\n\n\n\n\n0.2875775\n5\n\n\n0.7883051\n11\n\n\n0.4089769\n6\n\n\n0.8830174\n20\n\n\n0.9404673\n18\n\n\n0.0455565\n1\nAnd here is a simple scatterplot of the data showing a clear positive relationship between x and y\nlibrary(ggplot2)\nlibrary(cowplot)\n\nggplot(dat, aes(x = x, y = y)) + \n    geom_point() +\n    theme_cowplot()\nNow we can build a model of y as it responds to x:\nmod &lt;- glm(y ~ x, family = poisson)",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Likelihood, AIC, and likelihood ratio tests</span>"
+    ]
+  },
+  {
+    "objectID": "likelihood.html#what-is-a-model",
+    "href": "likelihood.html#what-is-a-model",
+    "title": "1  Likelihood, AIC, and likelihood ratio tests",
+    "section": "1.2 What is a model?",
+    "text": "1.2 What is a model?\nLet’s have a look at what R tells us about this model we just made:\n\nmod\n\n\nCall:  glm(formula = y ~ x, family = poisson)\n\nCoefficients:\n(Intercept)            x  \n     0.8888       2.1178  \n\nDegrees of Freedom: 99 Total (i.e. Null);  98 Residual\nNull Deviance:      353.5 \nResidual Deviance: 79.36    AIC: 457.7\n\n\nWe see there are estimated coefficients: (Intercept) and x. The intercept is just that, the intercept, and the x coefficient is actually the slope. But what intercept and what slope? These words imply an equation, and in fact the equation was hiding in the code we used to simulate data. We said\n\n# calculate the mean of `y` as a function of `x`\nlambda &lt;- exp(1 + 2 * x)\n\n# finally calculate `y`\ny &lt;- rpois(length(x), lambda)\n\nThe equation hiding in this code is\n\\[\\begin{align}\ny &\\sim Pois(\\lambda) \\text{, where} \\\\\n\\lambda &= \\exp(b_0 + b_1 x)\n\\end{align}\\]\nThis says that \\(y\\) is distributed according to a Poisson distribution (because we’re doing Poisson GLM) and that the mean of this Poisson distribution is a function of \\(x\\). Specifically, that function of \\(x\\) is \\(\\lambda = \\exp(b_0 + b_1 x)\\). So the slope is \\(b_1\\) and the intercept is \\(b_0\\). If we log transformed both sides we can more clearly see how \\(b_0\\) is the intercept and \\(b_1\\) the slope:\n\\[\\begin{align}\n&\\log(\\lambda) = \\log(\\exp(b_0 + b_1 x)) \\\\\n\\Rightarrow &\\log(\\lambda) = b_0 + b_1 x\n\\end{align}\\]\nThat we take the log of \\(\\lambda\\) is consistent with the fact that the Poisson GLM uses a log “link function” by default.\nIn our simulated data we set \\(b_0 = 1\\) and \\(b_1 = 2\\). Looking back at the output of the glm function we can see that our estimates are very close to those values!\n\nmod\n\n\nCall:  glm(formula = y ~ x, family = poisson)\n\nCoefficients:\n(Intercept)            x  \n     0.8888       2.1178  \n\nDegrees of Freedom: 99 Total (i.e. Null);  98 Residual\nNull Deviance:      353.5 \nResidual Deviance: 79.36    AIC: 457.7\n\n\nWe can directly access those estimates like this:\n\nb0_est &lt;- mod$coefficients[1]\nb1_est &lt;- mod$coefficients[2]\n\nb0_est\n\n(Intercept) \n  0.8887906 \n\nb1_est\n\n       x \n2.117753 \n\n\nBut how are those estimates actually made? That’s the job for likelihood.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Likelihood, AIC, and likelihood ratio tests</span>"
+    ]
+  },
+  {
+    "objectID": "likelihood.html#what-is-a-likelihood",
+    "href": "likelihood.html#what-is-a-likelihood",
+    "title": "1  Likelihood, AIC, and likelihood ratio tests",
+    "section": "1.3 What is a likelihood?",
+    "text": "1.3 What is a likelihood?\ntl;dr: likelihood is the probability of the data given the model and its parameters. The parameter estimates for our model are exactly the parameter values that produce the maximum possible likelihood of the data. We call them the maximum likelihood estimates.\nWhat does that mean? Let’s start with “probability of the data given the model and its parameters”. Remember from our equations, we are modeling \\(y\\) as coming from a Poisson distribution with mean \\(\\lambda\\), \\(\\lambda\\) is itself a function of \\(x\\) with parameters \\(b_0\\) and \\(b_1\\). So if we want to know the probability of any given data point (we’ll call any given data point \\(y_i\\)) then we just need to ask for the probability from the Poisson distribution, like this:\n\ni &lt;- 6 # let's look at the 6th data point\ny_i &lt;- dat$y[i]\n\n# calculate lambda for data point i\nlambda_i &lt;- exp(b0_est + b1_est * dat$x[i])\n\ndpois(y_i, lambda = lambda_i)\n\n[1] 0.1839187\n\n\nThat’s the probability of one data point, what about the probability of the entire dataset? Recall that probabilities multiply for independent observations, so the probability of the entire dataset is\n\\[\\begin{align}\nP(Y) &= P(y_1) \\times P(y_2) \\times P(y_2) \\times \\cdots \\times P(y_n) \\\\\n\\Rightarrow P(Y) &= \\prod_{i = 1}^n P(y_i)\n\\end{align}\\]\nThis probability \\(P(Y)\\) is exactly the likelihood. We might write it as\n\\[\n\\mathcal{L}(Y | b_0, b_1) = \\prod_{i = 1}^n P(y_i | b_0, b_1)\n\\]\nWe added the “\\(| b_0, b_1\\)” to emphasize that the probability and likelihood depend on the values of \\(b_0\\) and \\(b_1\\).\nIn R code we can calculate that math like this:\n\nallProbs &lt;- dpois(y, exp(b0_est + b1_est * x))\nprod(allProbs)\n\n[1] 3.08673e-99\n\n\nShoot! The probability is \\(3.0867301\\times 10^{-99}\\), so….basically 0. This is why when working with likelihoods we actually use the log likelihood. Taking the log of a product (i.e. multiplication) turns it into summation. We typically use a little \\(\\mathcal{l}\\) for log likelihood. So our math becomes\n\\[\\begin{align}\n&\\log(\\mathcal{L}(Y | b_0, b_1)) = \\log(\\prod_{i = 1}^n P(y_i | b_0, b_1)) \\\\\n\\Rightarrow &\\mathcal{l}(Y | b_0, b_1) = \\sum_{i = 1}^n \\log(P(y_i | b_0, b_1))\n\\end{align}\\]\nAnd our code becomes\n\nallLogProbs &lt;- dpois(y, exp(b0_est + b1_est * x), log = TRUE)\nsum(allLogProbs)\n\n[1] -226.8288\n\n\nSweet! Our log likelihood is negative (no problem) and a reasonable number, not something basically equal to 0.\nHow does this help us find our parameter estimates? To find out, let’s calculate the log likelihood of our data, but with a different value for the slope, say \\(b_1 = -1\\).\n\nl_neg1 &lt;- dpois(y, exp(b0_est - 1 * x), log = TRUE)\nsum(l_neg1)\n\n[1] -1259.075\n\n\nThat’s a much more negative log likelihood!\nLet’s try another value, say \\(b_1 = 4\\)\n\nl_pos4 &lt;- dpois(y, exp(b0_est + 4 * x), log = TRUE)\nsum(l_pos4)\n\n[1] -1556.177\n\n\nThat is also a much more negative number compared to the log likelihood at the actual estimated slope that R gave us. If we made a graph of how the log likelihood changes across different possible values of \\(b_1\\) it would look like this:\n\n\n\n\n\n\n\n\n\nThe log likelihood reaches its maximum value at exactly the value of \\(b_1\\) which the glm function gives us (shown in red).\nSo the parameter estimates that maximize the log likelihood of the data are the best possible parameter estimates for our model! And that’s how likelihood allows us to estimate parameters.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Likelihood, AIC, and likelihood ratio tests</span>"
+    ]
+  }
+]
