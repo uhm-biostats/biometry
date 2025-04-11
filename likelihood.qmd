@@ -1,0 +1,221 @@
+# Likelihood, AIC, and likelihood ratio tests
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE)
+```
+
+## Let's start with a model
+
+Let's start with a Poisson GLM and a made-up dataset to go along with it. Our data will just be `y` (the response variable) and `x` (the explanatory variable). We will assume `y` is the count of something (e.g. species abundance) and `x` is some kind of continuous numerical variable like temperature or rainfall, etc.
+
+Let's simulate some data
+
+```{r}
+#| echo: false
+
+set.seed(123)
+```
+
+```{r}
+# uniformly distributed explanatory variable
+x <- runif(100)
+
+# calculate the mean of `y` as a function of `x`
+# (don't worry about interpreting the right hand side right now)
+lambda <- exp(1 + 2 * x)
+
+# finally calculate `y`
+y <- rpois(length(x), lambda)
+
+# combine `x` and `y`
+dat <-  data.frame(x = x, y = y)
+```
+
+Here's the first few rows of our simulated data
+
+```{r}
+#| echo: false
+
+knitr::kable(head(dat))
+```
+
+And here is a simple scatterplot of the data showing a clear positive relationship between `x` and `y`
+
+```{r}
+library(ggplot2)
+library(cowplot)
+
+ggplot(dat, aes(x = x, y = y)) + 
+    geom_point() +
+    theme_cowplot()
+```
+
+Now we can build a model of `y` as it responds to `x`:
+
+```{r}
+mod <- glm(y ~ x, family = poisson)
+```
+
+## What is a model?
+
+Let's have a look at what R tells us about this model we just made:
+
+```{r}
+mod
+```
+
+We see there are estimated coefficients: `(Intercept)` and `x`. The intercept is just that, the intercept, and the `x` coefficient is actually the slope. But what intercept and what slope?  These words imply an equation, and in fact the equation was hiding in the code we used to simulate data.  We said
+
+```{r}
+#| eval: false
+
+# calculate the mean of `y` as a function of `x`
+lambda <- exp(1 + 2 * x)
+
+# finally calculate `y`
+y <- rpois(length(x), lambda)
+```
+
+The equation hiding in this code is
+
+\begin{align}
+y &\sim Pois(\lambda) \text{, where} \\
+\lambda &= \exp(b_0 + b_1 x)
+\end{align}
+
+This says that $y$ is distributed according to a Poisson distribution (because we're doing Poisson GLM) and that the mean of this Poisson distribution is a function of $x$. Specifically, that function of $x$ is $\lambda = \exp(b_0 + b_1 x)$. So the *slope* is $b_1$ and the intercept is $b_0$. If we log transformed both sides we can more clearly see how $b_0$ is the intercept and $b_1$ the slope:
+
+\begin{align}
+&\log(\lambda) = \log(\exp(b_0 + b_1 x)) \\ 
+\Rightarrow &\log(\lambda) = b_0 + b_1 x
+\end{align}
+
+That we take the log of $\lambda$ is consistent with the fact that the Poisson GLM uses a log "link function" by default.
+
+In our simulated data we set $b_0 = 1$ and $b_1 = 2$. Looking back at the output of the `glm` function we can see that our estimates are very close to those values!
+
+```{r}
+mod
+```
+
+We can directly access those estimates like this:
+
+```{r}
+b0_est <- mod$coefficients[1]
+b1_est <- mod$coefficients[2]
+
+b0_est
+b1_est
+```
+
+But how are those estimates actually made?  That's the job for likelihood.
+
+## What is a likelihood?
+
+tl;dr: likelihood is the probability of the data given the model and its parameters.  The parameter estimates for our model are exactly the parameter values that produce the maximum possible likelihood of the data.  We call them the *maximum likelihood estimates*.
+
+
+What does that mean?  Let's start with *"probability of the data given the model and its parameters"*. Remember from our equations, we are *modeling* $y$ as coming from a Poisson distribution with mean $\lambda$, $\lambda$ is itself a function of $x$ with *parameters* $b_0$ and $b_1$.  So if we want to know the probability of any given data point (we'll call any given data point $y_i$) then we just need to ask for the probability from the Poisson distribution, like this:
+
+```{r}
+i <- 6 # let's look at the 6th data point
+y_i <- dat$y[i]
+
+# calculate lambda for data point i
+lambda_i <- exp(b0_est + b1_est * dat$x[i])
+
+dpois(y_i, lambda = lambda_i)
+```
+
+That's the probability of one data point, what about the probability of the entire dataset?  Recall that probabilities multiply for independent observations, so the probability of the entire dataset is
+
+\begin{align}
+P(Y) &= P(y_1) \times P(y_2) \times P(y_2) \times \cdots \times P(y_n) \\
+\Rightarrow P(Y) &= \prod_{i = 1}^n P(y_i)
+\end{align}
+
+This probability $P(Y)$ is exactly the likelihood. We might write it as
+
+$$
+\mathcal{L}(Y | b_0, b_1) = \prod_{i = 1}^n P(y_i | b_0, b_1)
+$$
+
+We added the "$| b_0, b_1$" to emphasize that the probability and likelihood depend on the values of $b_0$ and $b_1$. 
+
+In R code we can calculate that math like this:
+
+```{r}
+allProbs <- dpois(y, exp(b0_est + b1_est * x))
+prod(allProbs)
+```
+
+```{r}
+#| echo: false
+p <- prod(allProbs)
+```
+
+Shoot! The probability is $`r p`$, so....basically 0. This is why when working with likelihoods we actually use the log likelihood.  Taking the log of a product (i.e. multiplication) turns it into summation. We typically use a little $\mathcal{l}$ for log likelihood.  So our math becomes
+
+\begin{align}
+&\log(\mathcal{L}(Y | b_0, b_1)) = \log(\prod_{i = 1}^n P(y_i | b_0, b_1)) \\
+\Rightarrow &\mathcal{l}(Y | b_0, b_1) = \sum_{i = 1}^n \log(P(y_i | b_0, b_1))
+\end{align}
+
+And our code becomes
+
+```{r}
+allLogProbs <- dpois(y, exp(b0_est + b1_est * x), log = TRUE)
+sum(allLogProbs)
+```
+
+```{r}
+#| echo: false
+
+l <- sum(allLogProbs)
+```
+
+Sweet! Our log likelihood is negative (no problem) and a reasonable number, not something basically equal to 0.
+
+How does this help us find our parameter estimates? To find out, let's calculate the log likelihood of our data, but with a different value for the slope, say $b_1 = -1$.
+
+```{r}
+l_neg1 <- dpois(y, exp(b0_est - 1 * x), log = TRUE)
+sum(l_neg1)
+```
+
+That's a much more negative log likelihood!  
+
+Let's try another value, say $b_1 = 4$
+
+```{r}
+l_pos4 <- dpois(y, exp(b0_est + 4 * x), log = TRUE)
+sum(l_pos4)
+```
+
+That is also a much more negative number compared to the log likelihood at the actual estimated slope that R gave us.  If we made a graph of how the log likelihood changes across different possible values of $b_1$ it would look like this:
+
+```{r}
+#| echo: false
+
+bb <- seq(-1, 4, length.out = 50)
+ll <- sapply(bb, function(b) {
+    dpois(y, exp(b0_est + b * x), log = TRUE) |>
+        sum()
+})
+
+ll <- data.frame(bb = bb, ll = ll)
+
+ggplot(ll, aes(x = bb, y = ll)) +
+    geom_line() +
+    theme_cowplot() +
+    xlab("b_1") +
+    ylab("log likelihood") + 
+    geom_vline(xintercept = b1_est, color = "red")
+
+```
+
+The log likelihood reaches its *maximum* value at exactly the value of $b_1$ which the `glm` function gives us (shown in red).  
+
+So the parameter estimates that maximize the log likelihood of the data are the best possible parameter estimates for our model!  And that's how likelihood allows us to estimate parameters.
