@@ -1,0 +1,26 @@
+project:
+  type: book
+  output-dir: docs
+
+
+book:
+  title: "Biometry"
+  author: "Andy Rominger"
+  chapters:
+    - index.qmd
+    - likelihood.qmd
+comments:
+  hypothesis: true
+
+
+# bibliography: references.bib
+
+
+format:
+  html:
+    theme: 
+      - cosmo
+      - mods.scss
+
+
+
