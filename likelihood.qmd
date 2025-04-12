@@ -219,3 +219,43 @@ ggplot(ll, aes(x = bb, y = ll)) +
 The log likelihood reaches its *maximum* value at exactly the value of $b_1$ which the `glm` function gives us (shown in red).  
 
 So the parameter estimates that maximize the log likelihood of the data are the best possible parameter estimates for our model!  And that's how likelihood allows us to estimate parameters.
+
+## Akaike Information Criterion
+
+So we can use log likelihood to estimate parameters, anything else? Yes! For one thing we can use log likelihood to help us decide between competing models. Competing models is the scenario where you have more than one possible model that you think could predict the data at hand and you want to decide which one does the best job relative to all the others. 
+
+In our simple example where we have `y` as some kind of count data and `x` as an explanatory variable, competing models could mean, for example, we have another explanatory variable `w` and we want to know which variable(s) do(es) the best job at predicting `y`.
+
+Let's make this concrete with code and some more simulated data
+
+```{r}
+#| echo: false
+
+set.seed(123)
+```
+
+
+```{r}
+# simulate w as random numbers that in fact have nothing to do with y
+w <- runif(length(x))
+
+# add w to our data.frame
+dat$w <- w
+
+# visualize y versus x and y versus w
+px <- ggplot(dat, aes(x = x, y = y)) + 
+    geom_points() +
+    theme_cowplot()
+
+pw <- ggplot(dat, aes(x = w, y = y)) + 
+    geom_points() +
+    theme_cowplot()
+
+plot_grid(px, pw, nrow = 1)
+```
+
+
+
+
+
+
