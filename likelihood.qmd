@@ -285,3 +285,5 @@ AIC is helpful for telling us which model is *relatively* more supported by the 
 ## Likelihood ratio test
 
 Enter the likelihood ratio test---this can actually give us some insight as to whether our model is any good at predicting the data.
+
+In the case of our preferred model of `y` as a function of `x`, to know if this model is any good, we need to figure out if knowing `x` actually helps us predict the values of `y`. Put another way, is modeling `y` as a function of `x` any more predictive than a model with only an intercept? The likelihood ratio test answers that question for us through a null hypothesis test that produces a $p$-value. The null hypothesis is that the likelihood for the model with only intercept is statistically indistinguishable from the likelihood of the full model, i.e. the model with intercept *and* a slope for `x`. 
