@@ -231,7 +231,7 @@ Let's make this concrete with code and some more simulated data
 ```{r}
 #| echo: false
 
-set.seed(123)
+set.seed(10)
 ```
 
 
@@ -244,18 +244,44 @@ dat$w <- w
 
 # visualize y versus x and y versus w
 px <- ggplot(dat, aes(x = x, y = y)) + 
-    geom_points() +
+    geom_point() +
     theme_cowplot()
 
 pw <- ggplot(dat, aes(x = w, y = y)) + 
-    geom_points() +
+    geom_point() +
     theme_cowplot()
 
 plot_grid(px, pw, nrow = 1)
 ```
 
+As we intended there is no real trend in `y` across `w`. But let's compare the likelihoods of the model with only `x` and a model with `x` and `w`:
+
+```{r}
+mod_with_w <- glm(y ~ x + w, family = poisson)
 
 
+logLik(mod_with_w)
+logLik(mod)
+```
 
+The likelihood of the model with `w` is actually slightly higher (i.e. less negative) than the model with only `x`. He aha lā?! It turns out that adding more parameters to a model (even if they're attached to nonsense explanatory variables) will always improve the likelihood of the data given the model. This is because every added parameter allows the model to capture a little more of the noise in the data, thus increasing the probability of the data given the model---that is, improving the likelihood. *But* we actually don't want to fit our model to the noise, we want to fit our model to the real biology of what's going on in the data.
 
+So how can we decide which model is best when simply adding nonsense paramters will always improve the likelihood?  This is the job of Akaike Information Criterion or "AIC". AIC is a metric that describes how much a model is supported by the data.  It is directly related to the log likelihood, but it penalizes models for the number of parameters they include, the more parameters, the higher the penalization.  The equation for AIC is
 
+$$
+AIC = 2k - 2l
+$$
+where $k$ is the number of fitted parameters in the model and $l$ is the log likelihood.  Let's look at the AIC values for our two models
+
+```{r}
+AIC(mod_with_w)
+AIC(mod)
+```
+
+A smaller AIC indicates better model support, and sure enough the AIC of the model with only `x` is smaller by about 2 points.
+
+AIC is helpful for telling us which model is *relatively* more supported by the data, but it does not tell us at all if the best supported model is actually any good.  Just that it's better than the other options.  To figure out if the model is actually any good at predicting the data, we need a different approach.
+
+## Likelihood ratio test
+
+Enter the likelihood ratio test---this can actually give us some insight as to whether our model is any good at predicting the data.
