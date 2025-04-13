@@ -199,6 +199,8 @@ window.Quarto = {
   <li><a href="#lets-start-with-a-model" id="toc-lets-start-with-a-model" class="nav-link active" data-scroll-target="#lets-start-with-a-model"><span class="header-section-number">1.1</span> Let’s start with a model</a></li>
   <li><a href="#what-is-a-model" id="toc-what-is-a-model" class="nav-link" data-scroll-target="#what-is-a-model"><span class="header-section-number">1.2</span> What is a model?</a></li>
   <li><a href="#what-is-a-likelihood" id="toc-what-is-a-likelihood" class="nav-link" data-scroll-target="#what-is-a-likelihood"><span class="header-section-number">1.3</span> What is a likelihood?</a></li>
+  <li><a href="#akaike-information-criterion" id="toc-akaike-information-criterion" class="nav-link" data-scroll-target="#akaike-information-criterion"><span class="header-section-number">1.4</span> Akaike Information Criterion</a></li>
+  <li><a href="#likelihood-ratio-test" id="toc-likelihood-ratio-test" class="nav-link" data-scroll-target="#likelihood-ratio-test"><span class="header-section-number">1.5</span> Likelihood ratio test</a></li>
   </ul>
 </nav>
     </div>
@@ -450,6 +452,72 @@ P(Y) &amp;= P(y_1) \times P(y_2) \times P(y_2) \times \cdots \times P(y_n) \\
 </div>
 <p>The log likelihood reaches its <em>maximum</em> value at exactly the value of <span class="math inline">\(b_1\)</span> which the <code>glm</code> function gives us (shown in red).</p>
 <p>So the parameter estimates that maximize the log likelihood of the data are the best possible parameter estimates for our model! And that’s how likelihood allows us to estimate parameters.</p>
+</section>
+<section id="akaike-information-criterion" class="level2" data-number="1.4">
+<h2 data-number="1.4" class="anchored" data-anchor-id="akaike-information-criterion"><span class="header-section-number">1.4</span> Akaike Information Criterion</h2>
+<p>So we can use log likelihood to estimate parameters, anything else? Yes! For one thing we can use log likelihood to help us decide between competing models. Competing models is the scenario where you have more than one possible model that you think could predict the data at hand and you want to decide which one does the best job relative to all the others.</p>
+<p>In our simple example where we have <code>y</code> as some kind of count data and <code>x</code> as an explanatory variable, competing models could mean, for example, we have another explanatory variable <code>w</code> and we want to know which variable(s) do(es) the best job at predicting <code>y</code>.</p>
+<p>Let’s make this concrete with code and some more simulated data</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># simulate w as random numbers that in fact have nothing to do with y</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>w <span class="ot">&lt;-</span> <span class="fu">runif</span>(<span class="fu">length</span>(x))</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a><span class="co"># add w to our data.frame</span></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>dat<span class="sc">$</span>w <span class="ot">&lt;-</span> w</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a><span class="co"># visualize y versus x and y versus w</span></span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>px <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(dat, <span class="fu">aes</span>(<span class="at">x =</span> x, <span class="at">y =</span> y)) <span class="sc">+</span> </span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>() <span class="sc">+</span></span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme_cowplot</span>()</span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a>pw <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(dat, <span class="fu">aes</span>(<span class="at">x =</span> w, <span class="at">y =</span> y)) <span class="sc">+</span> </span>
+<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>() <span class="sc">+</span></span>
+<span id="cb23-14"><a href="#cb23-14" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme_cowplot</span>()</span>
+<span id="cb23-15"><a href="#cb23-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-16"><a href="#cb23-16" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_grid</span>(px, pw, <span class="at">nrow =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="likelihood_files/figure-html/unnamed-chunk-19-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>As we intended there is no real trend in <code>y</code> across <code>w</code>. But let’s compare the likelihoods of the model with only <code>x</code> and a model with <code>x</code> and <code>w</code>:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>mod_with_w <span class="ot">&lt;-</span> <span class="fu">glm</span>(y <span class="sc">~</span> x <span class="sc">+</span> w, <span class="at">family =</span> poisson)</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="fu">logLik</span>(mod_with_w)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>'log Lik.' -226.8016 (df=3)</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="fu">logLik</span>(mod)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>'log Lik.' -226.8288 (df=2)</code></pre>
+</div>
+</div>
+<p>The likelihood of the model with <code>w</code> is actually slightly higher (i.e.&nbsp;less negative) than the model with only <code>x</code>. He aha lā?! It turns out that adding more parameters to a model (even if they’re attached to nonsense explanatory variables) will always improve the likelihood of the data given the model. This is because every added parameter allows the model to capture a little more of the noise in the data, thus increasing the probability of the data given the model—that is, improving the likelihood. <em>But</em> we actually don’t want to fit our model to the noise, we want to fit our model to the real biology of what’s going on in the data.</p>
+<p>So how can we decide which model is best when simply adding nonsense paramters will always improve the likelihood? This is the job of Akaike Information Criterion or “AIC”. AIC is a metric that describes how much a model is supported by the data. It is directly related to the log likelihood, but it penalizes models for the number of parameters they include, the more parameters, the higher the penalization. The equation for AIC is</p>
+<p><span class="math display">\[
+AIC = 2k - 2l
+\]</span> where <span class="math inline">\(k\)</span> is the number of fitted parameters in the model and <span class="math inline">\(l\)</span> is the log likelihood. Let’s look at the AIC values for our two models</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">AIC</span>(mod_with_w)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 459.6033</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="fu">AIC</span>(mod)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 457.6576</code></pre>
+</div>
+</div>
+<p>A smaller AIC indicates better model support, and sure enough the AIC of the model with only <code>x</code> is smaller by about 2 points.</p>
+<p>AIC is helpful for telling us which model is <em>relatively</em> more supported by the data, but it does not tell us at all if the best supported model is actually any good. Just that it’s better than the other options. To figure out if the model is actually any good at predicting the data, we need a different approach.</p>
+</section>
+<section id="likelihood-ratio-test" class="level2" data-number="1.5">
+<h2 data-number="1.5" class="anchored" data-anchor-id="likelihood-ratio-test"><span class="header-section-number">1.5</span> Likelihood ratio test</h2>
+<p>Enter the likelihood ratio test—this can actually give us some insight as to whether our model is any good at predicting the data.</p>
 
 
 </section>

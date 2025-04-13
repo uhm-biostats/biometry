@@ -38,5 +38,25 @@
     "crumbs": [
       "<span class='chapter-number'>1</span>  <span class='chapter-title'>Likelihood, AIC, and likelihood ratio tests</span>"
     ]
+  },
+  {
+    "objectID": "likelihood.html#akaike-information-criterion",
+    "href": "likelihood.html#akaike-information-criterion",
+    "title": "1  Likelihood, AIC, and likelihood ratio tests",
+    "section": "1.4 Akaike Information Criterion",
+    "text": "1.4 Akaike Information Criterion\nSo we can use log likelihood to estimate parameters, anything else? Yes! For one thing we can use log likelihood to help us decide between competing models. Competing models is the scenario where you have more than one possible model that you think could predict the data at hand and you want to decide which one does the best job relative to all the others.\nIn our simple example where we have y as some kind of count data and x as an explanatory variable, competing models could mean, for example, we have another explanatory variable w and we want to know which variable(s) do(es) the best job at predicting y.\nLet’s make this concrete with code and some more simulated data\n\n# simulate w as random numbers that in fact have nothing to do with y\nw &lt;- runif(length(x))\n\n# add w to our data.frame\ndat$w &lt;- w\n\n# visualize y versus x and y versus w\npx &lt;- ggplot(dat, aes(x = x, y = y)) + \n    geom_point() +\n    theme_cowplot()\n\npw &lt;- ggplot(dat, aes(x = w, y = y)) + \n    geom_point() +\n    theme_cowplot()\n\nplot_grid(px, pw, nrow = 1)\n\n\n\n\n\n\n\n\nAs we intended there is no real trend in y across w. But let’s compare the likelihoods of the model with only x and a model with x and w:\n\nmod_with_w &lt;- glm(y ~ x + w, family = poisson)\n\n\nlogLik(mod_with_w)\n\n'log Lik.' -226.8016 (df=3)\n\nlogLik(mod)\n\n'log Lik.' -226.8288 (df=2)\n\n\nThe likelihood of the model with w is actually slightly higher (i.e. less negative) than the model with only x. He aha lā?! It turns out that adding more parameters to a model (even if they’re attached to nonsense explanatory variables) will always improve the likelihood of the data given the model. This is because every added parameter allows the model to capture a little more of the noise in the data, thus increasing the probability of the data given the model—that is, improving the likelihood. But we actually don’t want to fit our model to the noise, we want to fit our model to the real biology of what’s going on in the data.\nSo how can we decide which model is best when simply adding nonsense paramters will always improve the likelihood? This is the job of Akaike Information Criterion or “AIC”. AIC is a metric that describes how much a model is supported by the data. It is directly related to the log likelihood, but it penalizes models for the number of parameters they include, the more parameters, the higher the penalization. The equation for AIC is\n\\[\nAIC = 2k - 2l\n\\] where \\(k\\) is the number of fitted parameters in the model and \\(l\\) is the log likelihood. Let’s look at the AIC values for our two models\n\nAIC(mod_with_w)\n\n[1] 459.6033\n\nAIC(mod)\n\n[1] 457.6576\n\n\nA smaller AIC indicates better model support, and sure enough the AIC of the model with only x is smaller by about 2 points.\nAIC is helpful for telling us which model is relatively more supported by the data, but it does not tell us at all if the best supported model is actually any good. Just that it’s better than the other options. To figure out if the model is actually any good at predicting the data, we need a different approach.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Likelihood, AIC, and likelihood ratio tests</span>"
+    ]
+  },
+  {
+    "objectID": "likelihood.html#likelihood-ratio-test",
+    "href": "likelihood.html#likelihood-ratio-test",
+    "title": "1  Likelihood, AIC, and likelihood ratio tests",
+    "section": "1.5 Likelihood ratio test",
+    "text": "1.5 Likelihood ratio test\nEnter the likelihood ratio test—this can actually give us some insight as to whether our model is any good at predicting the data.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Likelihood, AIC, and likelihood ratio tests</span>"
+    ]
   }
 ]
