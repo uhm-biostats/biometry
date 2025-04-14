@@ -286,4 +286,27 @@ AIC is helpful for telling us which model is *relatively* more supported by the 
 
 Enter the likelihood ratio test---this can actually give us some insight as to whether our model is any good at predicting the data.
 
-In the case of our preferred model of `y` as a function of `x`, to know if this model is any good, we need to figure out if knowing `x` actually helps us predict the values of `y`. Put another way, is modeling `y` as a function of `x` any more predictive than a model with only an intercept? The likelihood ratio test answers that question for us through a null hypothesis test that produces a $p$-value. The null hypothesis is that the likelihood for the model with only intercept is statistically indistinguishable from the likelihood of the full model, i.e. the model with intercept *and* a slope for `x`. 
+In the case of our preferred model of `y` as a function of `x`, to know if this model is any good, we need to figure out if knowing `x` actually helps us predict the values of `y`. Put another way, is modeling `y` as a function of `x` any more predictive than a model with only an intercept (i.e. a flat line through the mean of `y`)? The likelihood ratio test answers that question for us through a null hypothesis test that produces a $p$-value. The null hypothesis is that the likelihood for the flat line model with only intercept is statistically indistinguishable from the likelihood for the full model, the over with intercept *and* a slope for `x`. 
+
+We often call the model with fewer parameters, in this case the over with just the intercept, the "reduced model". Let's indicate the full model with all its parameters as $m$ and the reduced model as $m_0$. Then our two log likelihoods are
+
+\begin{align}
+\mathcal{l}_0 &= \log \mathcal{L}(y | m_0) \\
+\mathcal{l} &= \log \mathcal{L}(y | m)
+\end{align}
+
+And the test statistic for the likelihood ratio test is
+
+$$
+LRT = -2 (\mathcal{l}_0 - \mathcal{l})
+$$
+
+You might be wondering, where is the ratio (aka fraction) in this test statistic? Recall that logarithms have some special rules so that 
+
+$$
+-2 (\mathcal{l}_0 - \mathcal{l}) = \log( \frac{\mathcal{L}(y | m_0)}{\log \mathcal{L}(y | m)})
+$$
+
+So the likelihood ratio test statistic is $-2$ times the log of the ratio of the reduced model likelihood over the full model likelihood.
+
+It turns out that under the null hypothesis this test statistic has a $\Chi^2$ distribution with degrees of freedom equal to the difference in the number of fitted parameters between the models. The reduced model has one fitted parameter, the intercept, and the full model has two, intercept and slope. So the degrees of freedom for the null $\Chi^2$ distribution. 
