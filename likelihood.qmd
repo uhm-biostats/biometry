@@ -159,8 +159,8 @@ p <- prod(allProbs)
 Shoot! The probability is $`r p`$, so....basically 0. This is why when working with likelihoods we actually use the log likelihood.  Taking the log of a product (i.e. multiplication) turns it into summation. We typically use a little $\mathcal{l}$ for log likelihood.  So our math becomes
 
 \begin{align}
-&\log(\mathcal{L}(Y | b_0, b_1)) = \log(\prod_{i = 1}^n P(y_i | b_0, b_1)) \\
-\Rightarrow &\mathcal{l}(Y | b_0, b_1) = \sum_{i = 1}^n \log(P(y_i | b_0, b_1))
+&\log(\mathcal{L}(Y | b_0, b_1)) = \log\left( \prod_{i = 1}^n P(y_i | b_0, b_1) \right) \\
+\Rightarrow &\mathcal{l}(Y | b_0, b_1) = \sum_{i = 1}^n \log\left( P(y_i | b_0, b_1) \right)
 \end{align}
 
 And our code becomes
@@ -284,9 +284,9 @@ AIC is helpful for telling us which model is *relatively* more supported by the 
 
 ## Likelihood ratio test
 
-Enter the likelihood ratio test---this can actually give us some insight as to whether our model is any good at predicting the data.
+Enter the likelihood ratio test---this can actually give us some insight as to whether our model is any good at predicting the data.  We often abbreviate the likelihood ratio test as LRT, we'll adopt that starting now.
 
-In the case of our preferred model of `y` as a function of `x`, to know if this model is any good, we need to figure out if knowing `x` actually helps us predict the values of `y`. Put another way, is modeling `y` as a function of `x` any more predictive than a model with only an intercept (i.e. a flat line through the mean of `y`)? The likelihood ratio test answers that question for us through a null hypothesis test that produces a $p$-value. The null hypothesis is that the likelihood for the flat line model with only intercept is statistically indistinguishable from the likelihood for the full model, the over with intercept *and* a slope for `x`. 
+In the case of our preferred model of `y` as a function of `x`, to know if this model is any good, we need to figure out if knowing `x` actually helps us predict the values of `y`. Put another way, is modeling `y` as a function of `x` any more predictive than a model with only an intercept (i.e. a flat line through the mean of `y`)? The LRT answers that question for us through a null hypothesis test that produces a $p$-value. The null hypothesis is that the likelihood for the flat line model with only intercept is statistically indistinguishable from the likelihood for the full model, the over with intercept *and* a slope for `x`. 
 
 We often call the model with fewer parameters, in this case the over with just the intercept, the "reduced model". Let's indicate the full model with all its parameters as $m$ and the reduced model as $m_0$. Then our two log likelihoods are
 
@@ -295,7 +295,7 @@ We often call the model with fewer parameters, in this case the over with just t
 \mathcal{l} &= \log \mathcal{L}(y | m)
 \end{align}
 
-And the test statistic for the likelihood ratio test is
+And the test statistic for the LRT is
 
 $$
 LRT = -2 (\mathcal{l}_0 - \mathcal{l})
@@ -304,9 +304,54 @@ $$
 You might be wondering, where is the ratio (aka fraction) in this test statistic? Recall that logarithms have some special rules so that 
 
 $$
--2 (\mathcal{l}_0 - \mathcal{l}) = \log( \frac{\mathcal{L}(y | m_0)}{\log \mathcal{L}(y | m)})
+-2 (\mathcal{l}_0 - \mathcal{l}) = \log\left( \frac{\mathcal{L}(y | m_0)}{\mathcal{L}(y | m)} \right)
 $$
 
-So the likelihood ratio test statistic is $-2$ times the log of the ratio of the reduced model likelihood over the full model likelihood.
+So the LRT test statistic is $-2$ times the log of the ratio of the reduced model likelihood over the full model likelihood.
 
-It turns out that under the null hypothesis this test statistic has a $\Chi^2$ distribution with degrees of freedom equal to the difference in the number of fitted parameters between the models. The reduced model has one fitted parameter, the intercept, and the full model has two, intercept and slope. So the degrees of freedom for the null $\Chi^2$ distribution. 
+It turns out that under the null hypothesis---of indistinguishable likelihoods---this test statistic has a $\chi^2$ distribution with degrees of freedom equal to the difference in the number of fitted parameters between the models. The reduced model has one fitted parameter, the intercept, and the full model has two, intercept and slope. So the degrees of freedom for the null $\chi^2$ distribution. 
+
+Let's calculate the $LRT$ test statistic for our analysis and then calculate the $P$-value from the test statistic and relevant $\chi^2$ distribution
+
+```{r}
+# first we need to make the reduced model
+# the formula `y ~ 1` is how we tell R to just estimate the intercept, no slopes
+mod_0 <- glm(y ~ 1, data = dat, family = poisson)
+
+# now we can calculate lrt = -2 * (l_0 - l)
+lrt <- -2 * (logLik(mod_0) - logLik(mod))
+
+# finally let's calculate the p-value by seeing where this test statistic 
+# falls with repsect to the upper tail of the chi^2 distribution
+pchisq(lrt, df = 1, lower.tail = FALSE)
+```
+
+```{r}
+#| echo: false
+
+pval <- pchisq(lrt, df = 1, lower.tail = FALSE)
+```
+
+So the $P$-value is $`r pval`$, which is basically 0, and indeed that is less than our typical $\alpha = 0.05$ cutoff for statistical significance.  So we reject the null hypothesis of indistinguishable likelihoods and conclude that the model including a slope for `x` indeed does a better job predicting the data.
+
+## Key differences between AIC and LRT
+
+One key difference we already know is that AIC does not tell us if the model is a good fit to the data, it only helps us choose the best model out of two or more models that we are considering.  All the models could in fact be bad and then AIC will just tell us which is the least bad.  Conversely, the LRT can actually tell us if the model we're interested in does a better job of predicting the data than a more simplified model.  If our model of interest is better at prediction than a more simplified model, we have reason to conclude our model is actually relevant and meaningful.
+
+Another key difference between AIC and LRT is when each approach is statistically appropriate and not appropriate.  AIC can technically be used to compare *any* collection of models, while the LRT *only* works for "nested models."  What are nested models?  They are any two models where the "simpler" model contains a subset of the parameters from the full model and no other parameters not contained in the full model. So the example we've been working with of $m_0$ and $m$ meets this criterion. We can see this clearly if we write the equations for each.
+
+The full model is:
+
+\begin{align}
+Y &\sim Pois(\lambda) \\
+\lambda &= exp(b_0 + b_1 x)
+\end{align}
+
+The reduced model is: 
+
+\begin{align}
+Y &\sim Pois(\lambda_0) \\
+\lambda_0 &= exp(b_0)
+\end{align}
+
+So the reduced model and full model both have parameter $b_0$, but only the full model has parameter $b_1$, this means the parameters of the reduced model are a subset of, are "nested within," the parameters of the full model.
