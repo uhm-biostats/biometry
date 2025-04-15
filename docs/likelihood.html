@@ -201,6 +201,7 @@ window.Quarto = {
   <li><a href="#what-is-a-likelihood" id="toc-what-is-a-likelihood" class="nav-link" data-scroll-target="#what-is-a-likelihood"><span class="header-section-number">1.3</span> What is a likelihood?</a></li>
   <li><a href="#akaike-information-criterion" id="toc-akaike-information-criterion" class="nav-link" data-scroll-target="#akaike-information-criterion"><span class="header-section-number">1.4</span> Akaike Information Criterion</a></li>
   <li><a href="#likelihood-ratio-test" id="toc-likelihood-ratio-test" class="nav-link" data-scroll-target="#likelihood-ratio-test"><span class="header-section-number">1.5</span> Likelihood ratio test</a></li>
+  <li><a href="#key-differences-between-aic-and-lrt" id="toc-key-differences-between-aic-and-lrt" class="nav-link" data-scroll-target="#key-differences-between-aic-and-lrt"><span class="header-section-number">1.6</span> Key differences between AIC and LRT</a></li>
   </ul>
 </nav>
     </div>
@@ -411,8 +412,8 @@ P(Y) &amp;= P(y_1) \times P(y_2) \times P(y_2) \times \cdots \times P(y_n) \\
 </div>
 <p>Shoot! The probability is <span class="math inline">\(3.0867301\times 10^{-99}\)</span>, so….basically 0. This is why when working with likelihoods we actually use the log likelihood. Taking the log of a product (i.e.&nbsp;multiplication) turns it into summation. We typically use a little <span class="math inline">\(\mathcal{l}\)</span> for log likelihood. So our math becomes</p>
 <p><span class="math display">\[\begin{align}
-&amp;\log(\mathcal{L}(Y | b_0, b_1)) = \log(\prod_{i = 1}^n P(y_i | b_0, b_1)) \\
-\Rightarrow &amp;\mathcal{l}(Y | b_0, b_1) = \sum_{i = 1}^n \log(P(y_i | b_0, b_1))
+&amp;\log(\mathcal{L}(Y | b_0, b_1)) = \log\left( \prod_{i = 1}^n P(y_i | b_0, b_1) \right) \\
+\Rightarrow &amp;\mathcal{l}(Y | b_0, b_1) = \sum_{i = 1}^n \log\left( P(y_i | b_0, b_1) \right)
 \end{align}\]</span></p>
 <p>And our code becomes</p>
 <div class="cell">
@@ -517,7 +518,56 @@ AIC = 2k - 2l
 </section>
 <section id="likelihood-ratio-test" class="level2" data-number="1.5">
 <h2 data-number="1.5" class="anchored" data-anchor-id="likelihood-ratio-test"><span class="header-section-number">1.5</span> Likelihood ratio test</h2>
-<p>Enter the likelihood ratio test—this can actually give us some insight as to whether our model is any good at predicting the data.</p>
+<p>Enter the likelihood ratio test—this can actually give us some insight as to whether our model is any good at predicting the data. We often abbreviate the likelihood ratio test as LRT, we’ll adopt that starting now.</p>
+<p>In the case of our preferred model of <code>y</code> as a function of <code>x</code>, to know if this model is any good, we need to figure out if knowing <code>x</code> actually helps us predict the values of <code>y</code>. Put another way, is modeling <code>y</code> as a function of <code>x</code> any more predictive than a model with only an intercept (i.e.&nbsp;a flat line through the mean of <code>y</code>)? The LRT answers that question for us through a null hypothesis test that produces a <span class="math inline">\(p\)</span>-value. The null hypothesis is that the likelihood for the flat line model with only intercept is statistically indistinguishable from the likelihood for the full model, the over with intercept <em>and</em> a slope for <code>x</code>.</p>
+<p>We often call the model with fewer parameters, in this case the over with just the intercept, the “reduced model”. Let’s indicate the full model with all its parameters as <span class="math inline">\(m\)</span> and the reduced model as <span class="math inline">\(m_0\)</span>. Then our two log likelihoods are</p>
+<p><span class="math display">\[\begin{align}
+\mathcal{l}_0 &amp;= \log \mathcal{L}(y | m_0) \\
+\mathcal{l} &amp;= \log \mathcal{L}(y | m)
+\end{align}\]</span></p>
+<p>And the test statistic for the LRT is</p>
+<p><span class="math display">\[
+LRT = -2 (\mathcal{l}_0 - \mathcal{l})
+\]</span></p>
+<p>You might be wondering, where is the ratio (aka fraction) in this test statistic? Recall that logarithms have some special rules so that</p>
+<p><span class="math display">\[
+-2 (\mathcal{l}_0 - \mathcal{l}) = \log\left( \frac{\mathcal{L}(y | m_0)}{\mathcal{L}(y | m)} \right)
+\]</span></p>
+<p>So the LRT test statistic is <span class="math inline">\(-2\)</span> times the log of the ratio of the reduced model likelihood over the full model likelihood.</p>
+<p>It turns out that under the null hypothesis—of indistinguishable likelihoods—this test statistic has a <span class="math inline">\(\chi^2\)</span> distribution with degrees of freedom equal to the difference in the number of fitted parameters between the models. The reduced model has one fitted parameter, the intercept, and the full model has two, intercept and slope. So the degrees of freedom for the null <span class="math inline">\(\chi^2\)</span> distribution.</p>
+<p>Let’s calculate the <span class="math inline">\(LRT\)</span> test statistic for our analysis and then calculate the <span class="math inline">\(P\)</span>-value from the test statistic and relevant <span class="math inline">\(\chi^2\)</span> distribution</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="co"># first we need to make the reduced model</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a><span class="co"># the formula `y ~ 1` is how we tell R to just estimate the intercept, no slopes</span></span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>mod_0 <span class="ot">&lt;-</span> <span class="fu">glm</span>(y <span class="sc">~</span> <span class="dv">1</span>, <span class="at">data =</span> dat, <span class="at">family =</span> poisson)</span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a><span class="co"># now we can calculate lrt = -2 * (l_0 - l)</span></span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a>lrt <span class="ot">&lt;-</span> <span class="sc">-</span><span class="dv">2</span> <span class="sc">*</span> (<span class="fu">logLik</span>(mod_0) <span class="sc">-</span> <span class="fu">logLik</span>(mod))</span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a><span class="co"># finally let's calculate the p-value by seeing where this test statistic </span></span>
+<span id="cb32-9"><a href="#cb32-9" aria-hidden="true" tabindex="-1"></a><span class="co"># falls with repsect to the upper tail of the chi^2 distribution</span></span>
+<span id="cb32-10"><a href="#cb32-10" aria-hidden="true" tabindex="-1"></a><span class="fu">pchisq</span>(lrt, <span class="at">df =</span> <span class="dv">1</span>, <span class="at">lower.tail =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>'log Lik.' 1.409661e-61 (df=1)</code></pre>
+</div>
+</div>
+<p>So the <span class="math inline">\(P\)</span>-value is <span class="math inline">\(1.4096614\times 10^{-61}\)</span>, which is basically 0, and indeed that is less than our typical <span class="math inline">\(\alpha = 0.05\)</span> cutoff for statistical significance. So we reject the null hypothesis of indistinguishable likelihoods and conclude that the model including a slope for <code>x</code> indeed does a better job predicting the data.</p>
+</section>
+<section id="key-differences-between-aic-and-lrt" class="level2" data-number="1.6">
+<h2 data-number="1.6" class="anchored" data-anchor-id="key-differences-between-aic-and-lrt"><span class="header-section-number">1.6</span> Key differences between AIC and LRT</h2>
+<p>One key difference we already know is that AIC does not tell us if the model is a good fit to the data, it only helps us choose the best model out of two or more models that we are considering. All the models could in fact be bad and then AIC will just tell us which is the least bad. Conversely, the LRT can actually tell us if the model we’re interested in does a better job of predicting the data than a more simplified model. If our model of interest is better at prediction than a more simplified model, we have reason to conclude our model is actually relevant and meaningful.</p>
+<p>Another key difference between AIC and LRT is when each approach is statistically appropriate and not appropriate. AIC can technically be used to compare <em>any</em> collection of models, while the LRT <em>only</em> works for “nested models.” What are nested models? They are any two models where the “simpler” model contains a subset of the parameters from the full model and no other parameters not contained in the full model. So the example we’ve been working with of <span class="math inline">\(m_0\)</span> and <span class="math inline">\(m\)</span> meets this criterion. We can see this clearly if we write the equations for each.</p>
+<p>The full model is:</p>
+<p><span class="math display">\[\begin{align}
+Y &amp;\sim Pois(\lambda) \\
+\lambda &amp;= exp(b_0 + b_1 x)
+\end{align}\]</span></p>
+<p>The reduced model is:</p>
+<p><span class="math display">\[\begin{align}
+Y &amp;\sim Pois(\lambda_0) \\
+\lambda_0 &amp;= exp(b_0)
+\end{align}\]</span></p>
+<p>So the reduced model and full model both have parameter <span class="math inline">\(b_0\)</span>, but only the full model has parameter <span class="math inline">\(b_1\)</span>, this means the parameters of the reduced model are a subset of, are “nested within,” the parameters of the full model.</p>
 
 
 </section>
